@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Lövöldözős játék</title>
+<style>
+  body {
+    margin: 0;
+    overflow: hidden;
+    background: linear-gradient(135deg, #141e30, #243b55);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    user-select: none;
+    color: #e0e0e0;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+  }
+  #gameArea {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    cursor: crosshair;
+  }
+  
+  #hpContainer {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    display: flex;
+    gap: 8px;
+    z-index: 1100;
+  }
+  .heart {
+    width: 30px;
+    height: 30px;
+    fill: #ff3c3c;
+    filter: drop-shadow(0 0 2px #ff0000);
+    cursor: default;
+    user-select: none;
+  }
+  .enemy {
+    position: absolute;
+    width: 40px;
+    height: 40px;
+    background: radial-gradient(circle at center, #ffbf00, #ff7f00);
+    border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+    box-shadow: 0 0 12px #ff9f00;
+    animation-timing-function: linear;
+    transition: transform 0.15s ease, opacity 0.15s ease;
+  }
+ 
+  #scorePanel {
+    background: rgba(20, 30, 48, 0.95);
+    padding: 10px 20px;
+    font-size: 1.1rem;
+    font-weight: bold;
+    text-align: center;
+    letter-spacing: 1.2px;
+    position: relative;
+    z-index: 100;
+  }
+  #gameOverOverlay {
+    position: absolute;
+    top:0; left:0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.8);
+    color: #ff3c3c;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    font-weight: 700;
+    z-index: 1000;
+    flex-direction: column;
+    user-select: none;
+  }
+  #gameOverOverlay button {
+    margin-top: 20px;
+    padding: 10px 20px;
+    font-size: 1.2rem;
+    font-weight: 600;
+    background: #ff3c3c;
+    border: none;
+    border-radius: 8px;
+    color: white;
+    cursor: pointer;
+    box-shadow: 0 0 10px #ff5555;
+    transition: background 0.3s ease;
+  }
+  #gameOverOverlay button:hover {
+    background: #ff1a1a;
+  }
+ 
+  #startOverlay {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(20, 30, 48, 0.95);
+    z-index: 1200;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    user-select: none;
+  }
+  #startOverlay button {
+    padding: 20px 60px;
+    font-size: 2rem;
+    font-weight: 700;
+    background: #00bfff;
+    border: none;
+    border-radius: 12px;
+    color: white;
+    cursor: pointer;
+    box-shadow: 0 0 15px #00d4ff;
+    transition: background-color 0.3s ease;
+  }
+  #startOverlay button:hover {
+    background: #0099cc;
+  }
+</style>
+</head>
+<body>
+<div id="scorePanel">Pontszám: 0</div>
+<div id="topScores" style="position:absolute; top:10px; right:10px; text-align:right; z-index:2000;">
+  <div><strong>Top 3 pont:</strong></div>
+  <div id="score1">-</div>
+  <div id="score2">-</div>
+  <div id="score3">-</div>
+</div>
+
+<div id="hpContainer" aria-label="Életpontok" role="img">
+  <svg class="heart" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+  <svg class="heart" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+  <svg class="heart" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+</div>
+<div id="gameArea" role="main" aria-label="Lövöldözős játék">
+  <div id="gameOverOverlay" style="display:none;" role="alertdialog" aria-modal="true">
+    <div>Játék vége!</div>
+    <div id="finalScore" style="margin-top:10px; font-size:1.2rem;"></div>
+    <button id="restartBtn">Újraindít</button>
+  </div>
+  <div id="startOverlay" role="dialog" aria-modal="true" aria-label="Játék indítása">
+    <button id="startBtn" type="button">Indítá</button>
+  </div>
+</div>
+<script>
+(() => {
+  const gameArea = document.getElementById('gameArea');
+  const scorePanel = document.getElementById('scorePanel');
+  const overlay = document.getElementById('gameOverOverlay');
+  const finalScoreEl = document.getElementById('finalScore');
+  const restartBtn = document.getElementById('restartBtn');
+  const hpContainer = document.getElementById('hpContainer');
+  const startOverlay = document.getElementById('startOverlay');
+  const startBtn = document.getElementById('startBtn');
+
+  const gameWidth = window.innerWidth;
+  const gameHeight = window.innerHeight - scorePanel.offsetHeight;
+
+  gameArea.style.width = gameWidth + 'px';
+  gameArea.style.height = gameHeight + 'px';
+
+  let enemies = [];
+  let enemySpawnInterval = 1500; 
+  let lastEnemySpawn = 0;
+  let score = 0;
+  let maxHP = 3;
+  let currentHP = maxHP;
+  let gameRunning = false; 
+
+  const enemyWidth = 40;
+  const enemyHeight = 40;
+  const enemySpeedMin = 2;
+  const enemySpeedMax = 5;
+
+  function spawnEnemy() {
+    if(!gameRunning) return;
+    const enemy = document.createElement('div');
+    enemy.classList.add('enemy');
+    let x = Math.random() * (gameWidth - enemyWidth);
+    let y = -enemyHeight;
+    enemy.style.left = x + 'px';
+    enemy.style.top = y + 'px';
+    gameArea.appendChild(enemy);
+
+    const speed = enemySpeedMin + Math.random() * (enemySpeedMax - enemySpeedMin);
+    enemies.push({
+      el: enemy,
+      x: x,
+      y: y,
+      width: enemyWidth,
+      height: enemyHeight,
+      speed: speed,
+      hit: false,
+    });
+  }
+
+  function isPointInEnemy(x, y, enemy){
+    return (
+      x >= enemy.x &&
+      x <= enemy.x + enemy.width &&
+      y >= enemy.y &&
+      y <= enemy.y + enemy.height
+    );
+  }
+
+  function updateEnemies(deltaTime) {
+    enemies.forEach((enemy, i) => {
+      if(enemy.hit) return; 
+      enemy.y += enemy.speed;
+      if (enemy.y > gameHeight) {
+        enemyReachedBottom(i);
+      } else {
+        enemy.el.style.top = enemy.y + 'px';
+        enemy.x = parseFloat(enemy.el.style.left);
+        enemy.y = parseFloat(enemy.el.style.top);
+      }
+    });
+  }
+
+  function enemyReachedBottom(enemyIndex) {
+    const enemy = enemies[enemyIndex];
+    enemy.hit = true;
+    if (enemy.el.parentNode) enemy.el.parentNode.removeChild(enemy.el);
+    enemies.splice(enemyIndex, 1);
+    loseHP();
+  }
+
+  function loseHP() {
+    if(currentHP <= 0) return;
+    currentHP--;
+    updateHPDisplay();
+
+    if(currentHP <= 0){
+      endGame();
+    }
+  }
+
+  function updateHPDisplay(){
+    const hearts = hpContainer.querySelectorAll('svg.heart');
+    hearts.forEach((heart, index) => {
+      heart.style.opacity = (index < currentHP) ? '1' : '0.3';
+      heart.style.filter = (index < currentHP) ? 'drop-shadow(0 0 2px #ff0000)' : 'none';
+    });
+  }
+
+  function removeEnemy(index) {
+    const enemy = enemies[index];
+    enemy.hit = true;
+    enemy.el.style.transform = 'scale(1.4)';
+    enemy.el.style.opacity = '0';
+    setTimeout(() => {
+      if(enemy.el.parentNode) enemy.el.parentNode.removeChild(enemy.el);
+    }, 150);
+    enemies.splice(index, 1);
+  }
+
+  let lastTime = 0;
+  function gameLoop(time=0) {
+    if(!gameRunning){
+      requestAnimationFrame(gameLoop);
+      return;
+    }
+    let deltaTime = time - lastTime;
+    lastTime = time;
+
+    updateEnemies(deltaTime);
+
+    if(time - lastEnemySpawn > enemySpawnInterval){
+      spawnEnemy();
+      lastEnemySpawn = time;
+      if(enemySpawnInterval > 600){
+        enemySpawnInterval -= 20;
+      }
+    }
+    requestAnimationFrame(gameLoop);
+  }
+
+  function endGame() {
+  gameRunning = false;
+  overlay.style.display = 'flex';
+  finalScoreEl.textContent = `Elért pontszám: ${score}`;
+  saveScore(score);
+  displayTopScores();
+}
+window.onload = () => {
+  displayTopScores();
+};
+  function restartGame() {
+    enemies.forEach(e => {
+      if(e.el.parentNode){
+        e.el.parentNode.removeChild(e.el);
+      }
+    });
+    enemies = [];
+    score = 0;
+    scorePanel.textContent = 'Pontszám: 0';
+    currentHP = maxHP;
+    updateHPDisplay();
+    gameRunning = false;
+    overlay.style.display = 'none';
+    startOverlay.style.display = 'flex';
+    enemySpawnInterval = 1500;
+    lastEnemySpawn = 0;
+  }
+function saveScore(newScore) {
+  let scores = JSON.parse(localStorage.getItem('highscores')) || [];
+  scores.push(newScore);
+  scores.sort((a, b) => b - a); 
+  scores = scores.slice(0, 3); 
+  localStorage.setItem('highscores', JSON.stringify(scores));
+}
+
+function displayTopScores() {
+  let scores = JSON.parse(localStorage.getItem('highscores')) || [];
+  for (let i = 0; i < 3; i++) {
+    const score = scores[i] !== undefined ? scores[i] : '-';
+    document.getElementById(`score${i + 1}`).innerText = `${i + 1}. ${score}`;
+  }
+}
+  gameArea.addEventListener('mousedown', e => {
+    if(!gameRunning) return;
+    const rect = gameArea.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const clickY = e.clientY - rect.top;
+
+    for(let i = enemies.length -1; i >= 0; i--){
+      const enemy = enemies[i];
+      if(enemy.hit) continue;
+      if(isPointInEnemy(clickX, clickY, enemy)){
+        score++;
+        scorePanel.textContent = 'Pontszám: ' + score;
+        removeEnemy(i);
+        flashEffect();
+        return;
+      }
+    }
+  });
+
+  function flashEffect() {
+    gameArea.style.background = 'linear-gradient(135deg, #141e30, #ff0000)';
+    setTimeout(() => {
+      gameArea.style.background = 'linear-gradient(135deg, #141e30, #243b55)';
+    }, 100);
+  }
+
+  startBtn.addEventListener('click', () => {
+    startOverlay.style.display = 'none';
+    score = 0;
+    scorePanel.textContent = 'Pontszám: 0';
+    currentHP = maxHP;
+    updateHPDisplay();
+    gameRunning = true;
+    lastEnemySpawn = performance.now();
+    
+    lastTime = performance.now();
+    requestAnimationFrame(gameLoop);
+  });
+
+
+  restartBtn.addEventListener('click', () => {
+  location.reload();
+});
+
+
+  updateHPDisplay();
+  lastTime = performance.now();
+  requestAnimationFrame(gameLoop);
+})();
+</script>
+</body>
+</html>

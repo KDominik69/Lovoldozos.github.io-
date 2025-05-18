@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="hu">
 <head>
@@ -16,6 +17,7 @@
     flex-direction: column;
     height: 100vh;
   }
+
   #gameArea {
     flex: 1;
     position: relative;
@@ -117,11 +119,13 @@
   #startOverlay button:hover {
     background: #0099cc;
   }
+
 </style>
 </head>
 <body>
-<div id="scorePanel">Pontszám: 0</div>
+<div id="scorePanel">Pontszám: 0 (reszponzívítás újratöltés után áll fel)</div>
 <div id="topScores" style="position:absolute; top:10px; right:10px; text-align:right; z-index:2000;">
+  
   <div><strong>Top 3 pont:</strong></div>
   <div id="score1">-</div>
   <div id="score2">-</div>
